@@ -1,0 +1,11 @@
+/* resources/css/app.css
+|--------------------------------------------------------------------------
+| Application CSS Entry Point
+|--------------------------------------------------------------------------
+| Ini adalah entry point CSS utama aplikasi.
+| Tailwind CSS sudah dikonfigurasi via output.css di folder public/.
+*/
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
