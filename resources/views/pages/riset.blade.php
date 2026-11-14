@@ -83,9 +83,19 @@
             <!-- Grid Kartu Dosen Dinamis dari Database Supabase -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                 @forelse($dosen as $d)
+                    @php
+                        $dosenImg = null;
+                        if (!empty($d->foto_path)) {
+                            $dosenImg = str_starts_with($d->foto_path, 'http') ? $d->foto_path : asset('storage/' . $d->foto_path);
+                        } elseif (file_exists(public_path('wahyudi-290x300.png'))) {
+                            $dosenImg = asset('wahyudi-290x300.png');
+                        } else {
+                            $dosenImg = 'https://ui-avatars.com/api/?name=' . urlencode($d->nama) . '&background=1E3A8A&color=ffffff';
+                        }
+                    @endphp
                     <div class="bg-white rounded-2xl border border-slate-200/90 p-8 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col items-center text-left group">
                         <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-2 border-white shadow-md mb-5 bg-slate-100 ring-4 ring-blue-50 group-hover:scale-105 transition-transform duration-300 shrink-0">
-                            <img src="{{ asset($d->foto_path ?? 'wahyudi-290x300.png') }}" alt="{{ $d->nama }}" class="w-full h-full object-cover">
+                            <img src="{{ $dosenImg }}" alt="{{ $d->nama }}" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($d->nama) }}&background=1E3A8A&color=ffffff';">
                         </div>
                         <div class="w-full text-xs sm:text-sm font-medium text-slate-800 leading-normal space-y-2 pt-4 border-t border-slate-100">
                             <p class="font-bold text-[#1E3A8A] text-sm sm:text-base truncate group-hover:text-blue-900 transition-colors" title="{{ $d->nama }}">
@@ -94,7 +104,9 @@
                             <p><span class="text-slate-400 font-semibold">NIP :</span> {{ $d->nip ?? '-' }}</p>
                             <p><span class="text-slate-400 font-semibold">PRODI :</span> SISTEM INFORMASI {{ $d->prodi }}</p>
                             <p><span class="text-slate-400 font-semibold">KEAHLIAN :</span> <span class="inline-block bg-blue-50 text-[#1E3A8A] font-bold px-2.5 py-0.5 rounded text-xs uppercase">{{ $d->keahlian ?? 'General IT' }}</span></p>
-                            <p><span class="text-slate-400 font-semibold">NO. TLP :</span> {{ $d->no_telp ?? '-' }}</p>
+                            @if(!empty($d->email))
+                                <p class="truncate"><span class="text-slate-400 font-semibold">EMAIL :</span> <span class="text-slate-600 text-xs">{{ $d->email }}</span></p>
+                            @endif
                         </div>
                     </div>
                 @empty
@@ -280,7 +292,6 @@
                                         <p><span class="text-slate-400 font-medium">NIP :</span> 198008182005011001</p>
                                         <p class="truncate"><span class="text-slate-400 font-medium">PRODI :</span> SISTEM INFORMASI</p>
                                         <p><span class="text-slate-400 font-medium">KEAHLIAN :</span> <span class="text-[#1E3A8A] font-bold">DATA MINING</span></p>
-                                        <p><span class="text-slate-400 font-medium">NO. TLP :</span> 081234567890</p>
                                     </div>
                                 </div>
 
@@ -294,7 +305,6 @@
                                         <p><span class="text-slate-400 font-medium">NIP :</span> 197904122003121003</p>
                                         <p class="truncate"><span class="text-slate-400 font-medium">PRODI :</span> SISTEM INFORMASI</p>
                                         <p><span class="text-slate-400 font-medium">KEAHLIAN :</span> <span class="text-[#1E3A8A] font-bold">MACHINE LEARNING</span></p>
-                                        <p><span class="text-slate-400 font-medium">NO. TLP :</span> 081345678901</p>
                                     </div>
                                 </div>
 
@@ -308,7 +318,6 @@
                                         <p><span class="text-slate-400 font-medium">NIP :</span> 198801122014042002</p>
                                         <p class="truncate"><span class="text-slate-400 font-medium">PRODI :</span> SISTEM INFORMASI</p>
                                         <p><span class="text-slate-400 font-medium">KEAHLIAN :</span> <span class="text-[#1E3A8A] font-bold">DATA ANALYTICS</span></p>
-                                        <p><span class="text-slate-400 font-medium">NO. TLP :</span> 081678901234</p>
                                     </div>
                                 </div>
 

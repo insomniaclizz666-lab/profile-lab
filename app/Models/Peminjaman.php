@@ -10,6 +10,7 @@ class Peminjaman extends Model
     protected $fillable = [
         'user_id',
         'fasilitas_id',
+        'ruang_lab_id',
         'nama_alat_ruang',
         'nama_peminjam',
         'nim_nip',
@@ -17,6 +18,9 @@ class Peminjaman extends Model
         'no_telp',
         'tanggal_mulai',
         'tanggal_selesai',
+        'jam_mulai',
+        'jam_selesai',
+        'sesi',
         'durasi',
         'keperluan',
         'status', // Pending, Disetujui, Ditolak, Selesai
@@ -36,5 +40,10 @@ class Peminjaman extends Model
     public function fasilitas()
     {
         return $this->belongsTo(Fasilitas::class, 'fasilitas_id');
+    }
+
+    public function ruangLab()
+    {
+        return $this->belongsTo(RuangLab::class, 'ruang_lab_id');
     }
 }

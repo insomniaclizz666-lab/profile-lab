@@ -28,6 +28,7 @@ Route::post('/komunitas/thread/{thread}/vote', [HomeController::class, 'voteThre
 
 // Formulir Peminjaman Alat/Lab (Akses Publik / User)
 Route::post('/peminjaman', [HomeController::class, 'storePeminjaman'])->name('peminjaman.store');
+Route::get('/api/cek-ketersediaan-lab', [HomeController::class, 'cekKetersediaanLab'])->name('peminjaman.cekKetersediaan');
 
 // Registrasi Event / Workshop
 Route::post('/events/{event}/daftar', [HomeController::class, 'storeEventRegistration'])->name('events.register');
@@ -75,6 +76,11 @@ Route::prefix('admin')->middleware(['auth', 'role:admin,superadmin'])->name('adm
     Route::patch('/fasilitas/{fasilitas}', [AdminDashboardController::class, 'updateFasilitas'])->name('fasilitas.update');
     Route::delete('/fasilitas/{fasilitas}', [AdminDashboardController::class, 'destroyFasilitas'])->name('fasilitas.destroy');
 
+    Route::get('/layanan', [AdminDashboardController::class, 'layanan'])->name('layanan');
+    Route::post('/layanan', [AdminDashboardController::class, 'storeLayanan'])->name('layanan.store');
+    Route::patch('/layanan/{layanan}', [AdminDashboardController::class, 'updateLayanan'])->name('layanan.update');
+    Route::delete('/layanan/{layanan}', [AdminDashboardController::class, 'destroyLayanan'])->name('layanan.destroy');
+
     // Modul Khusus Super Admin (Akses: Superadmin Only)
     Route::middleware('role:superadmin')->group(function () {
         Route::get('/events', [AdminDashboardController::class, 'events'])->name('events');
@@ -117,5 +123,8 @@ Route::prefix('admin')->middleware(['auth', 'role:admin,superadmin'])->name('adm
         Route::post('/testimoni', [AdminDashboardController::class, 'storeTestimoni'])->name('testimoni.store');
         Route::patch('/testimoni/{testimoni}', [AdminDashboardController::class, 'updateTestimoni'])->name('testimoni.update');
         Route::delete('/testimoni/{testimoni}', [AdminDashboardController::class, 'destroyTestimoni'])->name('testimoni.destroy');
+
+        // Laporan & Rekapitulasi Kegiatan Laboratorium
+        Route::get('/laporan', [AdminDashboardController::class, 'laporan'])->name('laporan');
     });
 });

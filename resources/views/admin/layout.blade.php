@@ -49,7 +49,7 @@
                 <div class="min-w-0">
                     <h1 class="text-sm font-extrabold text-white tracking-wide truncate">Laboratorium SI</h1>
                     <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-400 text-slate-950 mt-0.5">
-                        {{ auth()->user()->role === 'superadmin' ? 'Superadmin' : 'Laboran' }}
+                        {{ auth()->user()?->role === 'superadmin' ? 'Superadmin' : 'Laboran' }}
                     </span>
                 </div>
             </div>
@@ -91,8 +91,14 @@
                     <span>Katalog Fasilitas</span>
                 </a>
 
+                <a href="{{ route('admin.layanan') }}"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition {{ request()->routeIs('admin.layanan*') ? 'bg-[#F59E0B] text-slate-950 shadow-sm font-bold' : 'hover:bg-white/10 text-blue-100 hover:text-white' }}">
+                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                    <span>Katalog Layanan</span>
+                </a>
+
                 <!-- Modul Khusus Superadmin -->
-                @if(auth()->user()->role === 'superadmin')
+                @if(auth()->user()?->role === 'superadmin')
                     <div class="pt-4 px-2.5 pb-2 text-[10px] font-bold uppercase tracking-[0.15em] text-amber-300">Khusus Superadmin</div>
 
                     <a href="{{ route('admin.events') }}"
@@ -127,10 +133,24 @@
                     </a>
                     @endif
 
+                    @if(Route::has('admin.galeri-testimoni'))
+                    <a href="{{ route('admin.galeri-testimoni') }}"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition {{ request()->routeIs('admin.galeri*') || request()->routeIs('admin.testimoni*') ? 'bg-[#F59E0B] text-slate-950 shadow-sm font-bold' : 'hover:bg-white/10 text-blue-100 hover:text-white' }}">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                        <span>Galeri & Testimoni</span>
+                    </a>
+                    @endif
+
                     <a href="{{ route('admin.users') }}"
                        class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition {{ request()->routeIs('admin.users*') ? 'bg-[#F59E0B] text-slate-950 shadow-sm font-bold' : 'hover:bg-white/10 text-blue-100 hover:text-white' }}">
                         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                         <span>Manajemen User & Role</span>
+                    </a>
+
+                    <a href="{{ route('admin.laporan') }}"
+                       class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition {{ request()->routeIs('admin.laporan*') ? 'bg-[#F59E0B] text-slate-950 shadow-sm font-bold' : 'hover:bg-white/10 text-blue-100 hover:text-white' }}">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>Laporan Rekap Kegiatan</span>
                     </a>
                 @endif
             </nav>
@@ -139,11 +159,11 @@
             <div class="p-3.5 border-t border-blue-900/60 bg-[#172554]">
                 <div class="flex items-center gap-2.5 mb-2.5">
                     <div class="w-9 h-9 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-extrabold text-sm shrink-0 shadow-sm">
-                        {{ strtoupper(substr(auth()->user()->name, 0, 1)) }}
+                        {{ strtoupper(substr(auth()->user()?->name ?? 'A', 0, 1)) }}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-xs font-bold text-white truncate">{{ auth()->user()->name }}</p>
-                        <p class="text-[10px] text-blue-200 truncate">{{ auth()->user()->email }}</p>
+                        <p class="text-xs font-bold text-white truncate">{{ auth()->user()?->name ?? 'Admin' }}</p>
+                        <p class="text-[10px] text-blue-200 truncate">{{ auth()->user()?->email ?? '-' }}</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
@@ -170,7 +190,7 @@
                 </div>
                 <div class="flex items-center gap-3">
                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-[#EEF5FF] text-[#1E3A8A] border border-blue-200">
-                        ● Role: {{ strtoupper(auth()->user()->role) }}
+                        ● Role: {{ strtoupper(auth()->user()?->role ?? 'ADMIN') }}
                     </span>
                     <a href="{{ route('home') }}" class="text-xs font-medium text-slate-500 hover:text-[#1E3A8A] transition flex items-center gap-1">
                         <span>Ke Halaman Depan</span>

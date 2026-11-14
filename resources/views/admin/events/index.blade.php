@@ -8,7 +8,7 @@
     <!-- Form Tambah Event Baru -->
     <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
         <h3 class="text-base font-bold text-slate-900 dark:text-white mb-4">Buat Agenda / Pelatihan Baru</h3>
-        <form action="{{ route('admin.events.store') }}" method="POST" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <form action="{{ route('admin.events.store') }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             @csrf
             <div class="sm:col-span-2">
                 <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Judul Agenda</label>
@@ -38,8 +38,12 @@
                 <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Nama Mentor</label>
                 <input type="text" name="mentor_nama" placeholder="Nama Narasumber" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
             </div>
-            <div class="flex items-end">
-                <button type="submit" class="w-full py-2.5 px-4 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition">
+            <div>
+                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Poster / Banner (Opsional)</label>
+                <input type="file" name="thumbnail" accept="image/*" class="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            </div>
+            <div class="sm:col-span-2 md:col-span-4 flex justify-end">
+                <button type="submit" class="py-2.5 px-6 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition shadow-sm">
                     + Simpan Event
                 </button>
             </div>
@@ -67,11 +71,23 @@
                     @forelse($events as $e)
                         <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition">
                             <td class="py-4 px-6">
-                                <span class="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                                    {{ $e->kategori }}
-                                </span>
-                                <p class="font-bold text-slate-900 dark:text-white mt-1">{{ $e->judul }}</p>
-                                <p class="text-xs text-slate-500">Mentor: {{ $e->mentor_nama ?? '-' }}</p>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-14 h-14 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex-shrink-0 flex items-center justify-center">
+                                        @if($e->thumbnail_path)
+                                            <img src="{{ str_starts_with($e->thumbnail_path, 'http') ? $e->thumbnail_path : asset('storage/' . $e->thumbnail_path) }}" alt="{{ $e->judul }}" class="w-full h-full object-cover" onerror="this.onerror=null; this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden');">
+                                            <svg class="w-6 h-6 text-slate-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        @else
+                                            <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        @endif
+                                    </div>
+                                    <div>
+                                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                            {{ $e->kategori }}
+                                        </span>
+                                        <p class="font-bold text-slate-900 dark:text-white mt-1">{{ $e->judul }}</p>
+                                        <p class="text-xs text-slate-500">Mentor: {{ $e->mentor_nama ?? '-' }}</p>
+                                    </div>
+                                </div>
                             </td>
                             <td class="py-4 px-6 text-xs text-slate-600 dark:text-slate-400">
                                 <p class="font-semibold text-slate-800 dark:text-slate-200">{{ \Carbon\Carbon::parse($e->tanggal)->format('d F Y') }}</p>
@@ -144,7 +160,7 @@
             <button type="button" onclick="document.getElementById('modalEditEvent').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕</button>
         </div>
 
-        <form id="formEditEvent" action="" method="POST" class="p-6 space-y-4">
+        <form id="formEditEvent" action="" method="POST" enctype="multipart/form-data" class="p-6 space-y-4">
             @csrf
             @method('PATCH')
 
@@ -200,6 +216,15 @@
                         <option value="Selesai">Selesai</option>
                     </select>
                 </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Poster / Banner Agenda</label>
+                <div id="edit_event_thumbnail_preview" class="mb-2 hidden">
+                    <img id="edit_event_thumbnail_img" src="" alt="Thumbnail" class="w-32 h-20 object-cover rounded-xl border border-slate-200 dark:border-slate-700">
+                </div>
+                <input type="file" name="thumbnail" accept="image/*" class="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                <p class="text-[11px] text-slate-400 mt-1">Kosongkan jika tidak ingin mengubah poster/banner.</p>
             </div>
 
             <div class="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
@@ -270,6 +295,15 @@ function bukaModalEditEvent(event) {
     document.getElementById('edit_event_mentor').value = event.mentor_nama || '';
     document.getElementById('edit_event_status_reg').value = event.status_registrasi || 'Open';
     document.getElementById('edit_event_status').value = event.status || 'Akan Datang';
+
+    const previewBox = document.getElementById('edit_event_thumbnail_preview');
+    const previewImg = document.getElementById('edit_event_thumbnail_img');
+    if (event.thumbnail_path) {
+        previewImg.src = event.thumbnail_path.startsWith('http') ? event.thumbnail_path : "{{ asset('storage') }}/" + event.thumbnail_path;
+        previewBox.classList.remove('hidden');
+    } else {
+        previewBox.classList.add('hidden');
+    }
 
     document.getElementById('modalEditEvent').classList.remove('hidden');
 }

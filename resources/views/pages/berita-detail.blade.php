@@ -1,13 +1,11 @@
-@extends('components.layout')
-
-@section('title', $berita->judul . ' — Wargalab SI UTM')
+@extends('layouts.app')
 
 @section('content')
 <div style="background-color:#F8FAFC; min-height:100vh;">
 
     {{-- Article Header --}}
-    <div style="background: linear-gradient(135deg, #1E3A8A 0%, #1e40af 60%, #172554 100%);" class="pt-28 pb-16 px-6">
-        <div class="max-w-3xl mx-auto">
+    <div style="background: linear-gradient(135deg, #1E3A8A 0%, #1e40af 60%, #172554 100%);" class="pt-32 pb-16 px-6">
+        <div class="max-w-4xl mx-auto">
             <div class="flex items-center gap-3 mb-5">
                 <a href="/" class="text-blue-200 hover:text-white text-sm font-medium transition">← Beranda</a>
                 <span class="text-blue-400">/</span>
@@ -41,13 +39,33 @@
     </div>
 
     {{-- Article Body --}}
-    <div class="max-w-3xl mx-auto px-6 py-12">
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 md:p-12">
+    <div class="max-w-4xl mx-auto px-6 py-12">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-10 md:p-12">
+
+            @php
+                $detailImg = null;
+                if (!empty($berita->foto_path)) {
+                    $detailImg = str_starts_with($berita->foto_path, 'http') ? $berita->foto_path : asset('storage/' . $berita->foto_path);
+                } else {
+                    $detailImg = $berita->kategori === 'Pengumuman'
+                        ? 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1200&q=80'
+                        : 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1200&q=80';
+                }
+            @endphp
+
+            @if($detailImg)
+                <div class="mb-8 rounded-2xl overflow-hidden border border-slate-200 shadow-sm max-h-[460px] bg-slate-100 flex items-center justify-center">
+                    <img src="{{ $detailImg }}"
+                         alt="{{ $berita->judul }}"
+                         class="w-full h-full object-cover"
+                         onerror="this.onerror=null; this.parentElement.classList.add('hidden');">
+                </div>
+            @endif
 
             @if($berita->ringkasan)
                 <div class="border-l-4 pl-5 py-3 mb-8 rounded-r-xl" style="border-color:#F59E0B; background-color:#FFFBEB;">
-                    <p class="text-sm font-semibold text-amber-800 mb-1 uppercase tracking-wider">Ringkasan</p>
-                    <p class="text-slate-700 leading-relaxed">{{ $berita->ringkasan }}</p>
+                    <p class="text-xs font-bold text-amber-800 mb-1 uppercase tracking-wider">Ringkasan Informasi</p>
+                    <p class="text-slate-700 leading-relaxed text-sm">{{ $berita->ringkasan }}</p>
                 </div>
             @endif
 
@@ -62,7 +80,7 @@
             <div class="mt-10 pt-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center gap-2">
                     <span class="text-xs text-slate-400">Bagikan:</span>
-                    <a href="https://wa.me/?text={{ urlencode($berita->judul . ' — ' . url('/berita/' . $berita->slug)) }}" target="_blank" class="p-2 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition">
+                    <a href="https://wa.me/?text={{ urlencode($berita->judul . ' — ' . url('/berita/' . $berita->slug)) }}" target="_blank" class="p-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition">
                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.968 0C5.335 0 0 5.335 0 11.968c0 2.102.549 4.071 1.502 5.785L0 24l6.457-1.479A11.918 11.918 0 0011.968 24C18.601 24 24 18.601 24 11.968 24 5.335 18.601 0 11.968 0zm0 21.818a9.85 9.85 0 01-5.023-1.374l-.36-.214-3.733.855.87-3.642-.234-.374a9.846 9.846 0 01-1.52-5.101c0-5.44 4.427-9.868 9.868-9.868 2.635 0 5.112 1.027 6.973 2.892a9.818 9.818 0 012.895 6.973c-.003 5.44-4.43 9.853-9.736 9.853z"/></svg>
                     </a>
                 </div>
@@ -79,13 +97,32 @@
                 <h3 class="text-lg font-bold mb-6" style="color:#1E3A8A;">Berita & Pengumuman Lainnya</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
                     @foreach($beritaTerkait as $b)
-                        <a href="/berita/{{ $b->slug }}" class="block bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md hover:border-blue-200 transition group">
-                            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 inline-block
-                                {{ $b->kategori === 'Pengumuman' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800' }}">
-                                {{ $b->kategori }}
-                            </span>
-                            <p class="font-bold text-sm text-slate-900 leading-tight group-hover:text-blue-700 transition line-clamp-2 mt-1">{{ $b->judul }}</p>
-                            <p class="text-xs text-slate-400 mt-2">{{ $b->published_at ? $b->published_at->format('d M Y') : $b->created_at->format('d M Y') }}</p>
+                        @php
+                            $relatedImg = null;
+                            if (!empty($b->foto_path)) {
+                                $relatedImg = str_starts_with($b->foto_path, 'http') ? $b->foto_path : asset('storage/' . $b->foto_path);
+                            } else {
+                                $relatedImg = $b->kategori === 'Pengumuman'
+                                    ? 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80'
+                                    : 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=600&q=80';
+                            }
+                        @endphp
+                        <a href="/berita/{{ $b->slug }}" class="block bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md hover:border-blue-200 transition group flex flex-col">
+                            @if($relatedImg)
+                                <div class="w-full h-36 overflow-hidden bg-slate-100 shrink-0">
+                                    <img src="{{ $relatedImg }}" alt="{{ $b->judul }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                                </div>
+                            @endif
+                            <div class="p-4 flex-1 flex flex-col justify-between">
+                                <div>
+                                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 inline-block
+                                        {{ $b->kategori === 'Pengumuman' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800' }}">
+                                        {{ $b->kategori }}
+                                    </span>
+                                    <p class="font-bold text-sm text-slate-900 leading-tight group-hover:text-blue-700 transition line-clamp-2 mt-1">{{ $b->judul }}</p>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-3">{{ $b->published_at ? $b->published_at->format('d M Y') : $b->created_at->format('d M Y') }}</p>
+                            </div>
                         </a>
                     @endforeach
                 </div>

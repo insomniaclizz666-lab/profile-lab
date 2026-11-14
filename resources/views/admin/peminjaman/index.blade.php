@@ -39,7 +39,16 @@
                                 <p class="text-xs text-slate-400 mt-0.5">{{ $p->no_telp ?? $p->email ?? '-' }}</p>
                             </td>
                             <td class="py-4 px-6">
-                                <span class="font-semibold text-slate-800 dark:text-slate-200">{{ $p->nama_alat_ruang }}</span>
+                                <span class="font-bold text-slate-800 dark:text-slate-200 block">{{ $p->nama_alat_ruang }}</span>
+                                @if($p->ruangLab)
+                                    <span class="text-[11px] font-semibold text-blue-600 dark:text-blue-400 block mt-0.5">Lokasi: {{ $p->ruangLab->nama_ruang }}</span>
+                                @endif
+                                @if($p->tanggal_mulai)
+                                    <span class="inline-flex items-center gap-1 text-[11px] text-slate-500 mt-1 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                                        <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                        {{ $p->tanggal_mulai->format('d/m/Y') }} • {{ $p->sesi ?? $p->durasi }}
+                                    </span>
+                                @endif
                             </td>
                             <td class="py-4 px-6 max-w-xs">
                                 <p class="text-xs font-semibold text-slate-700 dark:text-slate-300">{{ $p->durasi ?? 'Sesuai kesepakatan' }}</p>

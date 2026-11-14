@@ -79,12 +79,30 @@
                 @php
                     $kaprodi = $profils->firstWhere('jabatan', 'kaprodi');
                     $kepalaLab = $profils->firstWhere('jabatan', 'kepala_lab');
+
+                    $kaprodiImg = null;
+                    if ($kaprodi && $kaprodi->foto_path) {
+                        $kaprodiImg = str_starts_with($kaprodi->foto_path, 'http') ? $kaprodi->foto_path : asset('storage/' . $kaprodi->foto_path);
+                    } elseif (file_exists(public_path('doniii-294x300.png'))) {
+                        $kaprodiImg = asset('doniii-294x300.png');
+                    } else {
+                        $kaprodiImg = 'https://ui-avatars.com/api/?name=' . urlencode($kaprodi?->nama ?? 'Kaprodi') . '&background=1E3A8A&color=ffffff';
+                    }
+
+                    $kepalaLabImg = null;
+                    if ($kepalaLab && $kepalaLab->foto_path) {
+                        $kepalaLabImg = str_starts_with($kepalaLab->foto_path, 'http') ? $kepalaLab->foto_path : asset('storage/' . $kepalaLab->foto_path);
+                    } elseif (file_exists(public_path('wahyudi-290x300.png'))) {
+                        $kepalaLabImg = asset('wahyudi-290x300.png');
+                    } else {
+                        $kepalaLabImg = 'https://ui-avatars.com/api/?name=' . urlencode($kepalaLab?->nama ?? 'Kepala Lab') . '&background=1E3A8A&color=ffffff';
+                    }
                 @endphp
 
                 <!-- Profil Kaprodi (Foto Kiri, Teks Kanan) -->
                 <div class="flex flex-col md:flex-row items-center gap-6 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <div class="w-32 h-32 md:w-40 md:h-40 shrink-0">
-                        <img src="{{ asset($kaprodi?->foto_path ?? 'doniii-294x300.png') }}" alt="Foto Kaprodi" class="w-full h-full object-cover rounded-full shadow-md border-4 border-gray-50">
+                    <div class="w-32 h-32 md:w-40 md:h-40 shrink-0 rounded-full overflow-hidden shadow-md border-4 border-gray-50 bg-slate-100">
+                        <img src="{{ $kaprodiImg }}" alt="Foto Kaprodi" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($kaprodi?->nama ?? 'Kaprodi') }}&background=1E3A8A&color=ffffff';">
                     </div>
                     <div class="flex-1 text-left">
                         <h2 class="text-xl font-bold" style="color:#1E3A8A;">{{ $kaprodi?->nama ?? 'Dr. Firman Arifin, S.T., M.T.' }}</h2>
@@ -104,8 +122,8 @@
                             {{ $kepalaLab?->deskripsi ?? 'Memfasilitasi kegiatan praktikum berkualitas tinggi, riset mahasiswa, serta pengembangan soft skill dan hard skill berbasis teknologi mutakhir.' }}
                         </p>
                     </div>
-                    <div class="w-32 h-32 md:w-40 md:h-40 shrink-0 order-1 md:order-2">
-                        <img src="{{ asset($kepalaLab?->foto_path ?? 'wahyudi-290x300.png') }}" alt="Foto Kepala Laboratorium" class="w-full h-full object-cover rounded-full shadow-md border-4 border-gray-50">
+                    <div class="w-32 h-32 md:w-40 md:h-40 shrink-0 order-1 md:order-2 rounded-full overflow-hidden shadow-md border-4 border-gray-50 bg-slate-100">
+                        <img src="{{ $kepalaLabImg }}" alt="Foto Kepala Laboratorium" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($kepalaLab?->nama ?? 'Kepala Lab') }}&background=1E3A8A&color=ffffff';">
                     </div>
                 </div>
             </div>
@@ -214,25 +232,42 @@
             {{-- Grid 3 Kolom Card Berita dari Database --}}
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                 @forelse($beritaList as $b)
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition-shadow duration-200">
+                    @php
+                        $beritaImg = null;
+                        if (!empty($b->foto_path)) {
+                            $beritaImg = str_starts_with($b->foto_path, 'http') ? $b->foto_path : asset('storage/' . $b->foto_path);
+                        } else {
+                            $beritaImg = $b->kategori === 'Pengumuman'
+                                ? 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80'
+                                : 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80';
+                        }
+                    @endphp
+                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition-all duration-300 group">
                         {{-- Thumbnail / Badge Kategori --}}
-                        <div class="relative w-full h-48 shrink-0 overflow-hidden" style="background: linear-gradient(135deg, #EEF5FF 0%, #DBEAFE 100%);">
-                            <div class="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                        <div class="relative w-full h-48 shrink-0 overflow-hidden bg-slate-100">
+                            @if($beritaImg)
+                                <img src="{{ $beritaImg }}"
+                                     alt="{{ $b->judul }}"
+                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                     loading="lazy"
+                                     onerror="this.onerror=null; this.classList.add('hidden'); this.nextElementSibling.classList.remove('hidden');">
+                            @endif
+                            <div class="{{ $beritaImg ? 'hidden' : '' }} absolute inset-0 flex flex-col items-center justify-center gap-2" style="background: linear-gradient(135deg, #EEF5FF 0%, #DBEAFE 100%);">
                                 @if($b->kategori === 'Pengumuman')
                                     <svg class="w-10 h-10" style="color:#F59E0B;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
                                 @else
                                     <svg class="w-10 h-10" style="color:#1E3A8A;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
                                 @endif
                             </div>
-                            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider
+                            <span class="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider shadow-sm
                                 {{ $b->kategori === 'Pengumuman' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800' }}">
                                 {{ $b->kategori }}
                             </span>
                         </div>
                         {{-- Konten Card --}}
                         <div class="p-6 flex flex-col flex-1">
-                            <h3 class="text-base font-bold text-gray-800 mb-1 leading-snug line-clamp-2">
-                                {{ $b->judul }}
+                            <h3 class="text-base font-bold text-gray-800 mb-1 leading-snug line-clamp-2 group-hover:text-blue-900 transition-colors">
+                                <a href="/berita/{{ $b->slug }}">{{ $b->judul }}</a>
                             </h3>
                             <p class="text-xs text-slate-400 mb-3">
                                 {{ $b->published_at ? $b->published_at->format('d F Y') : $b->created_at->format('d F Y') }}
@@ -275,25 +310,35 @@
             {{-- Grid Galeri dari Database --}}
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 @forelse($galeriList as $g)
+                    @php
+                        $galeriImg = null;
+                        if (!empty($g->foto_path)) {
+                            $galeriImg = str_starts_with($g->foto_path, 'http') ? $g->foto_path : asset('storage/' . $g->foto_path);
+                        }
+                    @endphp
                     <div class="group relative rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-white" style="padding-top: 65%;">
-                        <div class="absolute inset-0 flex flex-col items-center justify-center"
-                             style="background: linear-gradient(135deg, {{ $g->kategori === 'Workshop' ? '#FEF3C7, #FDE68A' : ($g->kategori === 'Riset' ? '#E0E7FF, #C7D2FE' : '#DBEAFE, #BFDBFE') }});">
-                            @if($g->kategori === 'Workshop')
-                                <svg class="w-12 h-12 mb-2 opacity-40" style="color:#D97706;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                            @elseif($g->kategori === 'Riset')
-                                <svg class="w-12 h-12 mb-2 opacity-40" style="color:#4F46E5;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
-                            @else
-                                <svg class="w-12 h-12 mb-2 opacity-40" style="color:#1E3A8A;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                            @endif
-                        </div>
-                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+                        @if($galeriImg)
+                            <img src="{{ $galeriImg }}" alt="{{ $g->judul }}" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        @else
+                            <div class="absolute inset-0 flex flex-col items-center justify-center"
+                                 style="background: linear-gradient(135deg, {{ $g->kategori === 'Workshop' ? '#FEF3C7, #FDE68A' : ($g->kategori === 'Riset' ? '#E0E7FF, #C7D2FE' : '#DBEAFE, #BFDBFE') }});">
+                                @if($g->kategori === 'Workshop')
+                                    <svg class="w-12 h-12 mb-2 opacity-40" style="color:#D97706;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                @elseif($g->kategori === 'Riset')
+                                    <svg class="w-12 h-12 mb-2 opacity-40" style="color:#4F46E5;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                                @else
+                                    <svg class="w-12 h-12 mb-2 opacity-40" style="color:#1E3A8A;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                @endif
+                            </div>
+                        @endif
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 z-10">
                             <span class="text-[10px] font-bold uppercase tracking-wider text-amber-300 mb-1">{{ $g->kategori }}</span>
                             <p class="text-sm font-bold text-white leading-tight">{{ $g->judul }}</p>
                             @if($g->deskripsi)
                                 <p class="text-xs text-slate-300 mt-1 line-clamp-2">{{ $g->deskripsi }}</p>
                             @endif
                         </div>
-                        <span class="absolute top-3 left-3 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider
+                        <span class="absolute top-3 left-3 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider z-10
                             {{ $g->kategori === 'Workshop' ? 'bg-amber-100 text-amber-800' : ($g->kategori === 'Riset' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-blue-800') }}">
                             {{ $g->kategori }}
                         </span>

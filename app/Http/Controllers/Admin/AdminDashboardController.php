@@ -18,6 +18,7 @@ use App\Models\ProfilLaboratorium;
 use App\Models\Berita;
 use App\Models\Galeri;
 use App\Models\Testimoni;
+use App\Models\Layanan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -163,12 +164,18 @@ class AdminDashboardController extends Controller
             'sasaran'             => 'required|string|max:50',
             'cakupan'             => 'nullable|string',
             'urutan'              => 'nullable|integer',
+            'foto'                => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         $slug = \Illuminate\Support\Str::slug($validated['judul']) . '-' . rand(100, 999);
         $cakupan = null;
         if (!empty($validated['cakupan'])) {
             $cakupan = array_filter(array_map('trim', preg_split('/[\r\n,]+/', $validated['cakupan'])));
+        }
+
+        $fotoPath = null;
+        if ($request->hasFile('foto')) {
+            $fotoPath = $request->file('foto')->store('fasilitas', 'public');
         }
 
         Fasilitas::create([
@@ -180,6 +187,7 @@ class AdminDashboardController extends Controller
             'sasaran'             => $validated['sasaran'],
             'cakupan'             => $cakupan,
             'urutan'              => $validated['urutan'] ?? 0,
+            'foto_path'           => $fotoPath,
             'is_active'           => true,
         ]);
 
@@ -196,11 +204,19 @@ class AdminDashboardController extends Controller
             'sasaran'             => 'required|string|max:50',
             'cakupan'             => 'nullable|string',
             'urutan'              => 'nullable|integer',
+            'foto'                => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         $cakupan = null;
         if (!empty($validated['cakupan'])) {
             $cakupan = array_filter(array_map('trim', preg_split('/[\r\n,]+/', $validated['cakupan'])));
+        }
+
+        if ($request->hasFile('foto')) {
+            if ($fasilitas->foto_path && Storage::disk('public')->exists($fasilitas->foto_path)) {
+                Storage::disk('public')->delete($fasilitas->foto_path);
+            }
+            $fasilitas->foto_path = $request->file('foto')->store('fasilitas', 'public');
         }
 
         $fasilitas->update([
@@ -218,6 +234,9 @@ class AdminDashboardController extends Controller
 
     public function destroyFasilitas(Fasilitas $fasilitas): RedirectResponse
     {
+        if ($fasilitas->foto_path && Storage::disk('public')->exists($fasilitas->foto_path)) {
+            Storage::disk('public')->delete($fasilitas->foto_path);
+        }
         $fasilitas->delete();
         return back()->with('success', 'Fasilitas berhasil dihapus.');
     }
@@ -310,9 +329,15 @@ class AdminDashboardController extends Controller
             'tanggal'     => 'required|date',
             'lokasi'      => 'required|string|max:150',
             'mentor_nama' => 'nullable|string|max:100',
+            'thumbnail'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
         $slug = \Illuminate\Support\Str::slug($validated['judul']) . '-' . rand(100, 999);
+
+        $thumbnailPath = null;
+        if ($request->hasFile('thumbnail')) {
+            $thumbnailPath = $request->file('thumbnail')->store('events', 'public');
+        }
 
         Event::create([
             'judul'             => $validated['judul'],
@@ -322,6 +347,7 @@ class AdminDashboardController extends Controller
             'tanggal'           => $validated['tanggal'],
             'lokasi'            => $validated['lokasi'],
             'mentor_nama'       => $validated['mentor_nama'],
+            'thumbnail_path'    => $thumbnailPath,
             'status'            => 'Akan Datang',
             'status_registrasi' => 'Open',
         ]);
@@ -340,9 +366,26 @@ class AdminDashboardController extends Controller
             'mentor_nama'       => 'nullable|string|max:100',
             'status_registrasi' => 'required|in:Open,Closed',
             'status'            => 'required|in:Akan Datang,Berlangsung,Selesai',
+            'thumbnail'         => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
-        $event->update($validated);
+        if ($request->hasFile('thumbnail')) {
+            if ($event->thumbnail_path && Storage::disk('public')->exists($event->thumbnail_path)) {
+                Storage::disk('public')->delete($event->thumbnail_path);
+            }
+            $event->thumbnail_path = $request->file('thumbnail')->store('events', 'public');
+        }
+
+        $event->update([
+            'judul'             => $validated['judul'],
+            'kategori'          => $validated['kategori'],
+            'kuota_total'       => $validated['kuota_total'],
+            'tanggal'           => $validated['tanggal'],
+            'lokasi'            => $validated['lokasi'],
+            'mentor_nama'       => $validated['mentor_nama'],
+            'status_registrasi' => $validated['status_registrasi'],
+            'status'            => $validated['status'],
+        ]);
 
         return back()->with('success', 'Data agenda event berhasil diperbarui.');
     }
@@ -357,6 +400,9 @@ class AdminDashboardController extends Controller
 
     public function destroyEvent(Event $event): RedirectResponse
     {
+        if ($event->thumbnail_path && Storage::disk('public')->exists($event->thumbnail_path)) {
+            Storage::disk('public')->delete($event->thumbnail_path);
+        }
         $event->delete();
         return back()->with('success', 'Event berhasil dihapus.');
     }
@@ -729,6 +775,164 @@ class AdminDashboardController extends Controller
         }
         $testimoni->delete();
         return back()->with('success', 'Testimoni berhasil dihapus.');
+    }
+
+    // =========================================================================
+    // MODUL KATALOG LAYANAN LABORATORIUM
+    // =========================================================================
+
+    public function layanan(): View
+    {
+        $layananList = Layanan::orderBy('urutan')->paginate(15);
+        return view('admin.layanan.index', compact('layananList'));
+    }
+
+    public function storeLayanan(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'judul'             => 'required|string|max:255',
+            'sasaran'           => 'required|in:mahasiswa,dosen,umum',
+            'deskripsi_singkat' => 'required|string',
+            'deskripsi_lengkap' => 'nullable|string',
+            'cakupan'           => 'nullable|string',
+            'urutan'            => 'nullable|integer',
+            'foto'              => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        $slug = Str::slug($validated['judul']) . '-' . rand(100, 999);
+
+        $cakupan = null;
+        if (!empty($validated['cakupan'])) {
+            $cakupan = array_filter(array_map('trim', preg_split('/[\r\n,]+/', $validated['cakupan'])));
+        }
+
+        $fotoPath = null;
+        if ($request->hasFile('foto')) {
+            $fotoPath = $request->file('foto')->store('layanan', 'public');
+        }
+
+        Layanan::create([
+            'judul'             => $validated['judul'],
+            'slug'              => $slug,
+            'sasaran'           => $validated['sasaran'],
+            'deskripsi_singkat' => $validated['deskripsi_singkat'],
+            'deskripsi_lengkap' => $validated['deskripsi_lengkap'],
+            'cakupan'           => $cakupan,
+            'urutan'            => $validated['urutan'] ?? 0,
+            'foto_path'         => $fotoPath,
+            'is_active'         => true,
+        ]);
+
+        return back()->with('success', 'Layanan laboratorium baru berhasil ditambahkan.');
+    }
+
+    public function updateLayanan(Request $request, Layanan $layanan): RedirectResponse
+    {
+        $validated = $request->validate([
+            'judul'             => 'required|string|max:255',
+            'sasaran'           => 'required|in:mahasiswa,dosen,umum',
+            'deskripsi_singkat' => 'required|string',
+            'deskripsi_lengkap' => 'nullable|string',
+            'cakupan'           => 'nullable|string',
+            'urutan'            => 'nullable|integer',
+            'foto'              => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        $cakupan = null;
+        if (!empty($validated['cakupan'])) {
+            $cakupan = array_filter(array_map('trim', preg_split('/[\r\n,]+/', $validated['cakupan'])));
+        }
+
+        if ($request->hasFile('foto')) {
+            if ($layanan->foto_path && Storage::disk('public')->exists($layanan->foto_path)) {
+                Storage::disk('public')->delete($layanan->foto_path);
+            }
+            $layanan->foto_path = $request->file('foto')->store('layanan', 'public');
+        }
+
+        $layanan->update([
+            'judul'             => $validated['judul'],
+            'sasaran'           => $validated['sasaran'],
+            'deskripsi_singkat' => $validated['deskripsi_singkat'],
+            'deskripsi_lengkap' => $validated['deskripsi_lengkap'],
+            'cakupan'           => $cakupan,
+            'urutan'            => $validated['urutan'] ?? $layanan->urutan,
+        ]);
+
+        return back()->with('success', 'Layanan laboratorium berhasil diperbarui.');
+    }
+
+    public function destroyLayanan(Layanan $layanan): RedirectResponse
+    {
+        if ($layanan->foto_path && Storage::disk('public')->exists($layanan->foto_path)) {
+            Storage::disk('public')->delete($layanan->foto_path);
+        }
+        $layanan->delete();
+        return back()->with('success', 'Layanan laboratorium berhasil dihapus.');
+    }
+
+    /**
+     * MODUL LAPORAN & REKAPITULASI KEGIATAN LABORATORIUM (Khusus Superadmin).
+     */
+    public function laporan(Request $request): View
+    {
+        $periode = $request->input('periode', 'semua');
+        $startDate = null;
+        $endDate = null;
+
+        $now = \Carbon\Carbon::now();
+
+        if ($periode === 'bulan_ini') {
+            $startDate = $now->copy()->startOfMonth();
+            $endDate = $now->copy()->endOfMonth();
+        } elseif ($periode === 'semester_ganjil') {
+            // Semester Ganjil: September - Januari
+            $startDate = \Carbon\Carbon::create($now->year, 9, 1)->startOfDay();
+            $endDate = \Carbon\Carbon::create($now->year + 1, 1, 31)->endOfDay();
+        } elseif ($periode === 'semester_genap') {
+            // Semester Genap: Februari - Juni
+            $startDate = \Carbon\Carbon::create($now->year, 2, 1)->startOfDay();
+            $endDate = \Carbon\Carbon::create($now->year, 6, 30)->endOfDay();
+        } elseif ($periode === 'custom' && $request->filled('start_date') && $request->filled('end_date')) {
+            $startDate = \Carbon\Carbon::parse($request->input('start_date'))->startOfDay();
+            $endDate = \Carbon\Carbon::parse($request->input('end_date'))->endOfDay();
+        }
+
+        // 1. Rekap Peminjaman Lab & Alat
+        $peminjamanQuery = Peminjaman::with('ruangLab', 'fasilitas')->latest();
+        if ($startDate && $endDate) {
+            $peminjamanQuery->whereBetween('tanggal_mulai', [$startDate->toDateString(), $endDate->toDateString()]);
+        }
+        $peminjamanList = $peminjamanQuery->get();
+
+        // 2. Rekap Agenda, Pelatihan & Workshop
+        $eventsQuery = Event::withCount('registrations')->with('registrations')->latest('tanggal');
+        if ($startDate && $endDate) {
+            $eventsQuery->whereBetween('tanggal', [$startDate->toDateString(), $endDate->toDateString()]);
+        }
+        $eventsList = $eventsQuery->get();
+
+        // 3. Rekap Praktikum & Modul
+        $praktikumList = MataKuliahPraktikum::with('ruangLab')->withCount('modul')->orderBy('ruang_lab_id')->orderBy('hari')->get();
+
+        // 4. Ringkasan Angka Statistik
+        $totalPeminjamanSelesai = $peminjamanList->whereIn('status', ['Disetujui', 'Selesai'])->count();
+        $totalEventSelesai      = $eventsList->count();
+        $totalPesertaEvent      = $eventsList->sum('registrations_count');
+        $totalPraktikumAktif    = $praktikumList->where('status', 'aktif')->count();
+
+        return view('admin.laporan.index', compact(
+            'peminjamanList',
+            'eventsList',
+            'praktikumList',
+            'periode',
+            'startDate',
+            'endDate',
+            'totalPeminjamanSelesai',
+            'totalEventSelesai',
+            'totalPesertaEvent',
+            'totalPraktikumAktif'
+        ));
     }
 }
 

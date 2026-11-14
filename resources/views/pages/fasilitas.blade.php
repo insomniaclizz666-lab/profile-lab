@@ -140,10 +140,11 @@
                             <!-- Image -->
                             <div class="relative w-full h-44 rounded-xl overflow-hidden bg-slate-100 my-4 border border-slate-100">
                                 <img 
-                                    src="{{ $f->foto_path ? asset('storage/' . $f->foto_path) : 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=700&q=80' }}" 
+                                    src="{{ $f->foto_path ? (str_starts_with($f->foto_path, 'http') ? $f->foto_path : asset('storage/' . $f->foto_path)) : 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=700&q=80' }}" 
                                     alt="{{ $f->judul }}" 
                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                     loading="lazy"
+                                    onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=700&q=80';"
                                 />
                                 <div class="absolute bottom-2.5 right-2.5 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-lg shadow-sm border border-slate-200/80 flex items-center gap-1.5">
                                     <span class="text-[10px] font-bold text-[#1E3A8A]">{{ $f->kategori }}</span>

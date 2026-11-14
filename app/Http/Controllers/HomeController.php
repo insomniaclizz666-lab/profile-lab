@@ -144,13 +144,13 @@ class HomeController extends Controller
                     'location'            => $e->lokasi,
                     'description'         => $e->deskripsi,
                     'thumbnail'           => $e->thumbnail_path
-                        ? asset('storage/' . $e->thumbnail_path)
+                        ? (str_starts_with($e->thumbnail_path, 'http') ? $e->thumbnail_path : asset('storage/' . $e->thumbnail_path))
                         : 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=80',
                     'mentor'              => [
                         'name'   => $e->mentor_nama ?? 'Tim Lab SI',
                         'role'   => $e->mentor_role ?? 'Laboran',
                         'avatar' => $e->mentor_avatar_path
-                            ? asset('storage/' . $e->mentor_avatar_path)
+                            ? (str_starts_with($e->mentor_avatar_path, 'http') ? $e->mentor_avatar_path : asset('storage/' . $e->mentor_avatar_path))
                             : 'https://ui-avatars.com/api/?name=' . urlencode($e->mentor_nama ?? 'Lab') . '&background=1E3A8A&color=fff',
                     ],
                     'quota_filled'        => $filledQuota,
@@ -365,6 +365,157 @@ class HomeController extends Controller
     }
 
     /**
+     * Mengecek ketersediaan ruang lab / jadwal peminjaman agar tidak tabrakan dengan jadwal kelas.
+     */
+    public function cekKetersediaanLab(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $ruangLabId = $request->input('ruang_lab_id');
+        $tanggalStr = $request->input('tanggal');
+        $sesi       = $request->input('sesi', 'Pagi (08:00 - 12:00)');
+
+        if (!$ruangLabId || !$tanggalStr) {
+            return response()->json([
+                'status'    => 'error',
+                'message'   => 'Silakan pilih ruang laboratorium dan tanggal peminjaman.',
+                'available' => false,
+            ]);
+        }
+
+        try {
+            $tanggal = \Carbon\Carbon::parse($tanggalStr);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'    => 'error',
+                'message'   => 'Format tanggal tidak valid.',
+                'available' => false,
+            ]);
+        }
+
+        $ruang = \App\Models\RuangLab::find($ruangLabId);
+        if (!$ruang) {
+            return response()->json([
+                'status'    => 'error',
+                'message'   => 'Ruang laboratorium tidak ditemukan.',
+                'available' => false,
+            ]);
+        }
+
+        $daysMap = [
+            0 => 'Minggu',
+            1 => 'Senin',
+            2 => 'Selasa',
+            3 => 'Rabu',
+            4 => 'Kamis',
+            5 => 'Jumat',
+            6 => 'Sabtu',
+        ];
+        $hari = $daysMap[$tanggal->dayOfWeek] ?? 'Senin';
+
+        $sesiMap = [
+            'Pagi (08:00 - 12:00)'     => ['start' => '08:00:00', 'end' => '12:00:00'],
+            'Siang (13:00 - 17:00)'    => ['start' => '13:00:00', 'end' => '17:00:00'],
+            'Malam (18:30 - 21:00)'    => ['start' => '18:30:00', 'end' => '21:00:00'],
+            'Full Day (08:00 - 17:00)' => ['start' => '08:00:00', 'end' => '17:00:00'],
+        ];
+        $currentSesi = $sesiMap[$sesi] ?? ['start' => '08:00:00', 'end' => '17:00:00'];
+
+        // 1. Cek bentrok dengan Jadwal Kelas Praktikum Rutin
+        $kelasSchedules = \App\Models\MataKuliahPraktikum::where('ruang_lab_id', $ruangLabId)
+            ->where('hari', $hari)
+            ->where('status', 'aktif')
+            ->get();
+
+        $bentrokKelas = null;
+        $jadwalHariIni = [];
+
+        foreach ($kelasSchedules as $mk) {
+            $mkStart = $mk->jam_mulai ? substr($mk->jam_mulai, 0, 8) : '08:00:00';
+            $mkEnd   = $mk->jam_selesai ? substr($mk->jam_selesai, 0, 8) : '10:30:00';
+
+            $jadwalHariIni[] = [
+                'tipe'       => 'Kelas Praktikum',
+                'judul'      => $mk->nama . ' (Kelas ' . ($mk->kelas ?? 'A') . ')',
+                'dosen'      => $mk->dosen_pengampu ?? 'Dosen Pengampu',
+                'jam'        => substr($mkStart, 0, 5) . ' - ' . substr($mkEnd, 0, 5) . ' WIB',
+                'status'     => 'Terpakai Perkuliahan',
+                'badge'      => 'bg-rose-100 text-rose-800 border-rose-200',
+            ];
+
+            // Overlap check: start1 < end2 && end1 > start2
+            if ($currentSesi['start'] < $mkEnd && $currentSesi['end'] > $mkStart) {
+                $bentrokKelas = $mk;
+            }
+        }
+
+        // 2. Cek bentrok dengan peminjaman lain yang disetujui / pending
+        $peminjamanExisting = \App\Models\Peminjaman::where('ruang_lab_id', $ruangLabId)
+            ->where('tanggal_mulai', $tanggal->toDateString())
+            ->whereIn('status', ['Disetujui', 'Pending'])
+            ->get();
+
+        $bentrokPeminjaman = null;
+        foreach ($peminjamanExisting as $p) {
+            $pStart = '08:00:00';
+            $pEnd   = '17:00:00';
+            if (!empty($p->sesi) && isset($sesiMap[$p->sesi])) {
+                $pStart = $sesiMap[$p->sesi]['start'];
+                $pEnd   = $sesiMap[$p->sesi]['end'];
+            }
+
+            $jadwalHariIni[] = [
+                'tipe'       => 'Peminjaman Lab',
+                'judul'      => $p->keperluan,
+                'peminjam'   => $p->nama_peminjam . ' (' . $p->nim_nip . ')',
+                'jam'        => $p->sesi ?? (substr($pStart, 0, 5) . ' - ' . substr($pEnd, 0, 5) . ' WIB'),
+                'status'     => $p->status === 'Disetujui' ? 'Sudah Dipesan (Approved)' : 'Menunggu Konfirmasi',
+                'badge'      => $p->status === 'Disetujui' ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-blue-100 text-blue-800 border-blue-200',
+            ];
+
+            if ($currentSesi['start'] < $pEnd && $currentSesi['end'] > $pStart) {
+                $bentrokPeminjaman = $p;
+            }
+        }
+
+        if ($bentrokKelas) {
+            $jamStr = substr($bentrokKelas->jam_mulai, 0, 5) . ' - ' . substr($bentrokKelas->jam_selesai, 0, 5) . ' WIB';
+            return response()->json([
+                'available'       => false,
+                'status'          => 'bentrok_kelas',
+                'conflict_title'  => 'Jadwal Bentrok dengan Kelas Praktikum',
+                'message'         => "Ruangan {$ruang->nama_ruang} pada hari {$hari} sesi {$sesi} sedang digunakan untuk kelas \"{$bentrokKelas->nama}\" ({$jamStr}). Silakan pilih sesi atau hari lain.",
+                'jadwal_hari_ini' => $jadwalHariIni,
+                'ruang'           => $ruang->nama_ruang,
+                'hari'            => $hari,
+                'tanggal'         => $tanggal->translatedFormat('d F Y'),
+            ]);
+        }
+
+        if ($bentrokPeminjaman) {
+            return response()->json([
+                'available'       => false,
+                'status'          => 'bentrok_peminjaman',
+                'conflict_title'  => 'Jadwal Sudah Dipesan',
+                'message'         => "Ruangan {$ruang->nama_ruang} pada tanggal {$tanggal->format('d/m/Y')} sesi {$sesi} sudah diajukan oleh peminjam lain ({$bentrokPeminjaman->nama_peminjam}). Silakan pilih sesi atau tanggal lain.",
+                'jadwal_hari_ini' => $jadwalHariIni,
+                'ruang'           => $ruang->nama_ruang,
+                'hari'            => $hari,
+                'tanggal'         => $tanggal->translatedFormat('d F Y'),
+            ]);
+        }
+
+        return response()->json([
+            'available'       => true,
+            'status'          => 'available',
+            'conflict_title'  => null,
+            'message'         => "Jadwal TERSEDIA (AVAILABLE). {$ruang->nama_ruang} dapat digunakan pada hari {$hari}, {$tanggal->format('d/m/Y')} untuk sesi {$sesi}.",
+            'jadwal_hari_ini' => $jadwalHariIni,
+            'ruang'           => $ruang->nama_ruang,
+            'hari'            => $hari,
+            'tanggal'         => $tanggal->translatedFormat('d F Y'),
+        ]);
+    }
+
+    /**
      * Memproses permohonan peminjaman alat/ruang dari formulir.
      */
     public function storePeminjaman(Request $request): RedirectResponse
@@ -375,25 +526,97 @@ class HomeController extends Controller
             'nim_nip'         => 'required|string|max:50',
             'email'           => 'required|email|max:100',
             'no_telp'         => 'required|string|max:30',
-            'durasi'          => 'required|string|max:100',
+            'tanggal_mulai'   => 'nullable|date',
+            'sesi'            => 'nullable|string|max:50',
+            'durasi'          => 'nullable|string|max:100',
             'keperluan'       => 'required|string',
+            'ruang_lab_id'    => 'nullable|exists:ruang_lab,id',
         ]);
+
+        $tanggalPinjam = $validated['tanggal_mulai'] ? \Carbon\Carbon::parse($validated['tanggal_mulai']) : now()->addDay();
+        $sesi = $validated['sesi'] ?? 'Pagi (08:00 - 12:00)';
+        $ruangId = $validated['ruang_lab_id'] ?? null;
+
+        // Validasi Anti-Bentrok sisi Server jika memilih ruang lab
+        if ($ruangId) {
+            $daysMap = [0 => 'Minggu', 1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu'];
+            $hari = $daysMap[$tanggalPinjam->dayOfWeek] ?? 'Senin';
+
+            $sesiMap = [
+                'Pagi (08:00 - 12:00)'     => ['start' => '08:00:00', 'end' => '12:00:00'],
+                'Siang (13:00 - 17:00)'    => ['start' => '13:00:00', 'end' => '17:00:00'],
+                'Malam (18:30 - 21:00)'    => ['start' => '18:30:00', 'end' => '21:00:00'],
+                'Full Day (08:00 - 17:00)' => ['start' => '08:00:00', 'end' => '17:00:00'],
+            ];
+            $currentSesi = $sesiMap[$sesi] ?? ['start' => '08:00:00', 'end' => '17:00:00'];
+
+            // Cek kelas
+            $bentrokKelas = \App\Models\MataKuliahPraktikum::where('ruang_lab_id', $ruangId)
+                ->where('hari', $hari)
+                ->where('status', 'aktif')
+                ->where('jam_mulai', '<', $currentSesi['end'])
+                ->where('jam_selesai', '>', $currentSesi['start'])
+                ->first();
+
+            if ($bentrokKelas) {
+                return redirect()->back()->withInput()->with(
+                    'error',
+                    "Permohonan Ditolak: Jadwal bertabrakan dengan perkuliahan/praktikum \"{$bentrokKelas->nama}\" di hari {$hari} ({$bentrokKelas->jam_mulai} - {$bentrokKelas->jam_selesai}). Silakan pilih sesi atau tanggal lain."
+                );
+            }
+
+            // Cek peminjaman yang sudah ada
+            $bentrokPinjam = \App\Models\Peminjaman::where('ruang_lab_id', $ruangId)
+                ->where('tanggal_mulai', $tanggalPinjam->toDateString())
+                ->whereIn('status', ['Disetujui'])
+                ->where(function ($q) use ($sesi) {
+                    $q->where('sesi', $sesi)->orWhere('sesi', 'Full Day (08:00 - 17:00)');
+                })
+                ->first();
+
+            if ($bentrokPinjam) {
+                return redirect()->back()->withInput()->with(
+                    'error',
+                    "Permohonan Ditolak: Ruang laboratorium pada tanggal {$tanggalPinjam->format('d/m/Y')} sesi {$sesi} sudah disetujui untuk peminjam lain. Silakan pilih sesi lain."
+                );
+            }
+        }
+
+        // Tentukan jam mulai dan selesai berdasarkan sesi
+        $jamMulai = '08:00';
+        $jamSelesai = '12:00';
+        if (str_contains($sesi, '13:00')) {
+            $jamMulai = '13:00';
+            $jamSelesai = '17:00';
+        } elseif (str_contains($sesi, '18:30')) {
+            $jamMulai = '18:30';
+            $jamSelesai = '21:00';
+        } elseif (str_contains($sesi, 'Full Day')) {
+            $jamMulai = '08:00';
+            $jamSelesai = '17:00';
+        }
 
         Peminjaman::create([
             'user_id'         => Auth::id(),
+            'ruang_lab_id'    => $ruangId,
             'nama_alat_ruang' => $validated['nama_alat_ruang'],
             'nama_peminjam'   => $validated['nama_peminjam'],
             'nim_nip'         => $validated['nim_nip'],
             'email'           => $validated['email'] ?? (Auth::user()?->email),
             'no_telp'         => $validated['no_telp'] ?? (Auth::user()?->no_telp),
-            'durasi'          => $validated['durasi'],
+            'tanggal_mulai'   => $tanggalPinjam->toDateString(),
+            'tanggal_selesai' => $tanggalPinjam->toDateString(),
+            'jam_mulai'       => $jamMulai,
+            'jam_selesai'     => $jamSelesai,
+            'sesi'            => $sesi,
+            'durasi'          => $validated['durasi'] ?? $sesi,
             'keperluan'       => $validated['keperluan'],
             'status'          => 'Pending',
         ]);
 
         return redirect()->back()->with(
             'success',
-            'Permohonan peminjaman inventaris/ruang laboratorium berhasil dikirim! Tiket permohonan telah diteruskan ke Laboran Wargalab SI UTM.'
+            'Permohonan peminjaman berhasil dikirim! Jadwal telah terverifikasi AVAILABLE (tidak bentrok dengan jadwal kelas praktikum). Silakan tunggu konfirmasi laboran.'
         );
     }
 }
